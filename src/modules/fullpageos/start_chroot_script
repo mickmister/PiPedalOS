@@ -224,6 +224,8 @@ apt-get install -y ca-certificates curl
     dpkg-deb --root-owner-group -b "$tmp/unpacked" "$tmp/image.deb"
     chmod 755 "$tmp"
     apt-get install -y "$tmp/image.deb"
+    # Restore the upstream maintainer script for future package operations.
+    install -m 755 "$tmp/control/postinst" /var/lib/dpkg/info/pipedal.postinst
 )
 mkdir -p /etc/systemd/system
 cat > /etc/systemd/system/pipedal-firstboot.service <<'EOF'
@@ -236,8 +238,9 @@ ConditionPathExists=!/var/lib/pipedal-firstboot.done
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/pipedalconfig --install --port 8080
+ExecStart=/usr/bin/systemctl is-active pipedaladmind.service
+ExecStart=/usr/bin/systemctl is-active pipedald.service
 ExecStart=/usr/bin/systemctl enable pipedaladmind.service pipedald.service
-ExecStart=/usr/bin/systemctl is-active pipedaladmind.service pipedald.service
 ExecStart=/usr/bin/touch /var/lib/pipedal-firstboot.done
 TimeoutStartSec=300
 RemainAfterExit=yes

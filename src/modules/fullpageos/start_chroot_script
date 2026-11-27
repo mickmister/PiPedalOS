@@ -201,6 +201,52 @@ fi
 echo "server time.nist.gov" >> /etc/ntp.conf
 echo "server ntp.ubuntu.com" >> /etc/ntp.conf
 
+
+# Install PiPedal into the image. Its upstream installer starts systemd
+# services, so finish configuration on the actual device at first boot.
+if [ "$(dpkg --print-architecture)" != arm64 ]; then
+    echo "PiPedalOS requires an arm64 base image." >&2
+    exit 1
+fi
+apt-get install -y ca-certificates curl
+(
+    set -e
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+    deb="$tmp/pipedal_2.0.111_arm64.deb"
+    curl --fail --location --retry 3 --output "$deb" \
+        https://github.com/rerdavies/pipedal/releases/download/v2.0.111/pipedal_2.0.111_arm64.deb
+    echo "2cef9fdfbbe917adfd8943a39aeacb5f93630f1d66f3b4e858c27c3cd01fbd97  $deb" | sha256sum -c -
+    # Suppress the package's live-service postinst until first boot.
+    mkdir "$tmp/control"
+    dpkg-deb -R "$deb" "$tmp/unpacked"
+    mv "$tmp/unpacked/DEBIAN/postinst" "$tmp/control/postinst"
+    dpkg-deb --root-owner-group -b "$tmp/unpacked" "$tmp/image.deb"
+    chmod 755 "$tmp"
+    apt-get install -y "$tmp/image.deb"
+)
+mkdir -p /etc/systemd/system
+cat > /etc/systemd/system/pipedal-firstboot.service <<'EOF'
+[Unit]
+Description=Configure PiPedal on first boot
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=!/var/lib/pipedal-firstboot.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/pipedalconfig --install --port 8080
+ExecStart=/usr/bin/systemctl enable pipedaladmind.service pipedald.service
+ExecStart=/usr/bin/systemctl is-active pipedaladmind.service pipedald.service
+ExecStart=/usr/bin/touch /var/lib/pipedal-firstboot.done
+TimeoutStartSec=300
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl enable pipedal-firstboot.service
+
 #cleanup
 apt-get clean
 apt-get autoremove -y

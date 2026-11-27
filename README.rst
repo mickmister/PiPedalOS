@@ -34,6 +34,22 @@ How to use it?
 #. Boot the Pi from the SD card
 #. Log into your Pi via SSH (it is located at ``fullpageos.local`` `if your computer supports bonjour <https://learn.adafruit.com/bonjour-zeroconf-networking-for-windows-and-linux/overview>`_ or the IP address assigned by your router), default username is "pi", default password is "raspberry" and change the password using the ``passwd`` command. Consider also changing the vnc password as well by `x11vnc -storepasswd`.
 
+PiPedalOS
+---------
+
+This branch adds PiPedal 2.0.111 to the ARM64 FullPageOS image.
+The package is installed during image generation with its SHA-256 verified.
+On first boot, systemd configures PiPedal on TCP port 8080, leaving the
+existing FullPageOS web server on port 80. Open ``http://<device-ip>:8080``
+from a browser on your trusted local network. The kiosk retains its existing
+configuration. Change default device credentials before network use.
+
+The first-boot setup is retried on subsequent boots if it fails. To diagnose
+it, run ``sudo journalctl -u pipedal-firstboot.service -b`` and
+``systemctl status pipedald pipedaladmind``. Once configured, PiPedal's
+native services start automatically. Audio hardware and latency require
+validation on a physical Raspberry Pi. ARM32 images are not supported.
+
 Requirements
 ------------
 * Raspberry Pi 2 and newer or device running Armbian. Older Raspberry Pis are not currently supported.  See `Raspberry Pi <https://github.com/guysoft/FullPageOS/issues/12>`_ and `Raspberry Pi <https://github.com/guysoft/FullPageOS/issues/43>`_.
@@ -78,7 +94,7 @@ You can build it by issuing the following commands::
     git clone https://github.com/guysoft/CustomPiOS.git
     git clone https://github.com/guysoft/FullPageOS.git
     cd FullPageOS/src/image
-    wget -c --trust-server-names 'https://downloads.raspberrypi.org/raspios_lite_armhf_latest'
+    wget -c --trust-server-names 'https://downloads.raspberrypi.org/raspios_lite_arm64_latest'
     cd ..
     ../../CustomPiOS/src/update-custompios-paths
     sudo modprobe loop

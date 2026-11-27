@@ -3,6 +3,9 @@ name: Build Image
 on:
   repository_dispatch:
   push:
+    branches:
+      - '**'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,8 +14,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - board: raspberrypiarmhf
-            arch: armhf
           - board: raspberrypiarm64
             arch: arm64
     steps:
